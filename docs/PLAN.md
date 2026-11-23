@@ -37,7 +37,7 @@ Each step: Taras guesses -> Claude builds -> measure -> checkpoint -> commit -> 
   the sandbox). Check: one `claude-haiku-5-5` call with max_tokens=5 through the `SSL_CERT_FILE`
   fix, and `models.list` shows both model IDs. Gemma half done 2026-11-23: inside the sandbox MLX
   fails with "No Metal device available", so Gemma runs in Taras's terminal (see S5). Still to see:
-  Taras's first run of `scripts/gemma_guard.py` (does mlx-lm support Gemma 4).
+  Gemma 4 on mlx-lm runs (5.8 s load, ~2 s/request). Open: it thinks before answering; see journal.
 - [ ] S1 Proxy, cost log, exact cache, SQL. The cost formula counts `cache_creation_input_tokens`
   and `cache_read_input_tokens` from the start, else the cap and S3 are wrong. The cache key holds
   model, system prompt, temperature, tenant and the normalised messages. Check: a repeated request

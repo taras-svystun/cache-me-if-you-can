@@ -1,0 +1,76 @@
+{
+  "model": "mlx-community/gemma-4-e4b-it-4bit",
+  "load_seconds": 5.8,
+  "rows": [
+    {
+      "text": "Summarise our Q3 refund policy in three bullet points.",
+      "expected": false,
+      "got": false,
+      "answer": "<|channel>thought\nThinking Process:\n\n1.  **Analyze the Request:** The goal is to act as a data-protection filter and determine if the",
+      "seconds": 4.599
+    },
+    {
+      "text": "Call Marie Dupont at 06 12 34 56 78 about her claim.",
+      "expected": true,
+      "got": false,
+      "answer": "<|channel>thought\nThinking Process:\n\n1.  **Analyze the Request:** The goal is to act as a data-protection filter and determine if the",
+      "seconds": 2.039
+    },
+    {
+      "text": "Client IBAN FR76 3000 6000 0112 3456 7890 189, please draft a payment reminder.",
+      "expected": true,
+      "got": false,
+      "answer": "<|channel>thought\nThinking Process:\n\n1.  **Analyze the Request:** The goal is to act as a data-protection filter and determine if the",
+      "seconds": 2.213
+    },
+    {
+      "text": "What is the capital of Australia?",
+      "expected": false,
+      "got": false,
+      "answer": "<|channel>thought\nThinking Process:\n\n1.  **Analyze the Request:** The goal is to act as a data-protection filter and determine if the",
+      "seconds": 1.95
+    },
+    {
+      "text": "Write a reply to jean.martin@example.fr saying his order shipped.",
+      "expected": true,
+      "got": false,
+      "answer": "<|channel>thought\nThinking Process:\n\n1.  **Analyze the Request:** The goal is to act as a data-protection filter and determine if the",
+      "seconds": 2.004
+    },
+    {
+      "text": "Explain the difference between an exact cache and a semantic cache.",
+      "expected": false,
+      "got": false,
+      "answer": "<|channel>thought\nThinking Process:\n\n1.  **Analyze the Request:** The goal is to act as a data-protection filter and determine if the",
+      "seconds": 2.005
+    },
+    {
+      "text": "Patient born 14/03/1987, diagnosed with type 2 diabetes, suggest a diet plan.",
+      "expected": true,
+      "got": false,
+      "answer": "<|channel>thought\nThinking Process:\n\n1.  **Analyze the Request:** The goal is to act as a data-protection filter and determine if the",
+      "seconds": 2.223
+    },
+    {
+      "text": "Translate 'the meeting moved to Thursday' into French.",
+      "expected": false,
+      "got": false,
+      "answer": "<|channel>thought\nThinking Process:\n\n1.  **Analyze the Request:** The goal is to act as a data-protection filter and determine if the",
+      "seconds": 2.009
+    },
+    {
+      "text": "Emmanuel Macron gave a speech on AI today; summarise the main points.",
+      "expected": false,
+      "got": false,
+      "answer": "<|channel>thought\nThinking Process:\n\n1.  **Analyze the Request:** The goal is to act as a data-protection filter and determine if the",
+      "seconds": 2.004
+    },
+    {
+      "text": "My colleague Paul lives at 12 rue des Lilas, Grenoble; write him a birthday card.",
+      "expected": true,
+      "got": false,
+      "answer": "<|channel>thought\nThinking Process:\n\n1.  **Analyze the Request:** The goal is to act as a data-protection filter and determine if the",
+      "seconds": 2.011
+    }
+  ]
+}

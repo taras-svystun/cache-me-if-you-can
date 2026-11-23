@@ -21,3 +21,9 @@ Newest at the bottom.
   So Gemma runs in Taras's own terminal via `scripts/gemma_guard.py`. Torch for embeddings
   runs on CPU here. Checked offline: the Gemma chat template loads (`<|turn>user ... <|turn>model`)
   and the script compiles; the model run itself is not yet verified.
+- First Gemma run (Taras's terminal, `results/guard_gemma.json`): mlx-lm runs Gemma 4 on the GPU.
+  Load 5.8 s, about 2.0 s per request at 30 tokens. Score 5/10 is fake: every answer starts with
+  `<|channel>thought` (the model thinks first), the 30 tokens run out inside the thinking, so the
+  parser saw no YES and called all 10 "clean". `enable_thinking=False` does not change the prompt
+  (checked: same string as the default). Fix to try in S5: prefill an empty thought block, or raise
+  max_tokens and parse the text after the thinking ends. Not tested yet.
