@@ -27,3 +27,14 @@ Newest at the bottom.
   parser saw no YES and called all 10 "clean". `enable_thinking=False` does not change the prompt
   (checked: same string as the default). Fix to try in S5: prefill an empty thought block, or raise
   max_tokens and parse the text after the thinking ends. Not tested yet.
+
+## 2026-11-24 · Docs trimmed
+- PLAN cut from 800 to ~450 words; BRIEF from 450 to ~190 and refocused on what matters to Taras
+  (PLAN = what we do, BRIEF = why). Call moved to 13:00; stop 12:30; mock only 15 minutes,
+  because Taras learns by building, not by rehearsing. Steps run in priority order until time ends.
+
+## 2026-11-24 · S0.5 smoke test
+- `scripts/smoke.py` through the `SSL_CERT_FILE` fix: `models.list` shows `claude-haiku-5-5` and
+  `claude-sonnet-5-5`; one Haiku call (max_tokens=5) replied "Hi there!" with 12 input and 5 output
+  tokens. Usage also carries `cache_creation_input_tokens`, `cache_read_input_tokens` and a split
+  of cache writes into 5-minute and 1-hour TTL: the S1 cost formula must read them.

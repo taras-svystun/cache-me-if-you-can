@@ -1,14 +1,14 @@
 # cache-me-if-you-can
 
 A tiny AI gateway (FastAPI proxy in front of Claude) that Taras builds and measures to understand
-caching, routing and local guards before his TheTop FDE call on 2026-11-24.
+caching, routing and local guards before his TheTop FDE call on 2026-11-24 at 13:00.
 
 - `GLOSSARY.md`: the project's words. Use them in code, docs and commits.
 - `docs/PLAN.md`: the plan, the session order and what we agreed. Read it when starting a step.
 - `docs/journal.md`: what each finished step did, what we measured, and why. Read it before
   researching anything, and at the start of each session.
 - `docs/critic.md`: the critic prompt. Read it when calling the critic.
-- `docs/BRIEF.md`: the original brief, kept for history. `PLAN.md` wins where they differ.
+- `docs/BRIEF.md`: why the project exists and what matters to Taras. Read it to judge the work (critic, mock). `PLAN.md` wins where they differ.
 
 ## Learning lab rules
 

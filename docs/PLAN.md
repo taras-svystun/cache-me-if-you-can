@@ -1,70 +1,46 @@
 # cache-me-if-you-can: plan
 
-## Purpose
-Taras has a technical call with TheTop's FDE engineer on 2026-11-24. TheTop's product, TheEngine,
-is a gateway between a company and its AI providers: routing, caching, policy checks, spend
-dashboard. His gaps: caching layers, routing, SQL basics, local AI. Tonight he builds a tiny
-gateway and measures it, so tomorrow he can say "I measured this yesterday", not "I would do it
-like this". Call prep: `ai-job-search/documents/applications/thetop_applied_ai_engineer_fde/interview_prep_fde_call.md`.
+Why and what matters: `BRIEF.md`. What we measured: `journal.md`.
 
 ## What we build
-A FastAPI proxy: client -> proxy -> Claude. Every request goes into a SQLite cost log
-(model, tokens, cost, cache hit, latency). Demos run in-process with FastAPI TestClient.
-Models: Haiku 5.5 (`claude-haiku-5-5`) as the default and cheap route, Sonnet 5.5
-(`claude-sonnet-5-5`) as the hard route.
+FastAPI proxy: client -> proxy -> Claude, run in-process with TestClient. Every request is a row
+in a SQLite cost log (model, tokens, cost, cache hit, latency). Models: `claude-haiku-5-5`
+(default, cheap route), `claude-sonnet-5-5` (hard route).
 
-## Decided
-- Understanding over typing: Claude builds; Taras guesses each result before we measure, and
-  writes only the one-line key pieces (the exact-cache key, the SQL query).
-- One session per step; `/clear` between steps. Each new session starts from this plan and the journal.
-- Budget $3: a new Anthropic key in its own workspace with a $3 limit in the Console, pasted
-  into `.env` by Taras with `read -s`. Spend cap in code: HTTP 402 over $2.50 logged.
-- Subagents: the critic once on this plan (prompt in `docs/critic.md`), and web-fetch to read
-  Anthropic docs. Both run on the Claude Code subscription, not on the API budget.
-- Test data made up by Claude: about 30 queries with exact repeats, paraphrases and traps;
-  a made-up company policy as the long document.
-- Git: Taras ran `git init` and the remote (private repo). Claude gives a commit command per step.
-- Mock interview in a fresh session that sees only the journal and the call prep file.
-- Against: no Ollama server, no sandbox change for localhost, no phone part, repo stays private
-  until after the call.
+## Rules
+- Each step: Taras guesses -> Claude builds -> measure -> checkpoint -> commit.
+  Taras writes only the one-line key pieces (exact-cache key, SQL query).
+- Budget $3 (Console workspace limit). Proxy returns HTTP 402 once logged cost passes $2.50.
+- Test data made up: ~30 queries (exact repeats, paraphrases, traps) and a made-up policy document.
+- Every step adds one row to a single results table from Taras's SQL query:
+  hit rate, wrong-hit rate, $ saved, ms added.
+- Out: Ollama, sandbox change for localhost, phone part. Repo private until after the call.
 
-## Steps
-Each step: Taras guesses -> Claude builds -> measure -> checkpoint -> commit -> `/clear`.
+## Steps, in priority order
+Work down the list until time runs out.
 
-- ✅ S0 Setup: project files, venv, model download started, plan, critic.
-  Check: files exist, critic's changes folded in.
-- [ ] S0.5 Smoke test, 10 min (from the critic: riskiest assumption is that the toolchain works in
-  the sandbox). Check: one `claude-haiku-5-5` call with max_tokens=5 through the `SSL_CERT_FILE`
-  fix, and `models.list` shows both model IDs. Gemma half done 2026-11-23: inside the sandbox MLX
-  fails with "No Metal device available", so Gemma runs in Taras's terminal (see S5). Still to see:
-  Gemma 4 on mlx-lm runs (5.8 s load, ~2 s/request). Open: it thinks before answering; see journal.
-- [ ] S1 Proxy, cost log, exact cache, SQL. The cost formula counts `cache_creation_input_tokens`
-  and `cache_read_input_tokens` from the start, else the cap and S3 are wrong. The cache key holds
-  model, system prompt, temperature, tenant and the normalised messages. Check: a repeated request
-  is a hit with 0 tokens and ~0 ms; two tenants never share a hit; hit rate on the query set;
-  Taras's SQL query gives cost per model; 402 fires over the cap (test with a lowered cap).
-
-Every step ends with one row in a single results table (hit rate, wrong-hit rate, $ saved, ms
-added), produced by Taras's SQL query: one table to recite in the call.
-- [ ] S3 Provider prompt caching. First read Anthropic's docs for the current minimum cacheable
-  length and cache prices (cite page and date in the journal). Check: second call shows
-  `cache_read_input_tokens` > 0 and the measured cost drop matches the docs.
-- [ ] S2 Semantic cache with `sentence-transformers` embeddings on CPU (`device="cpu"`: the sandbox
-  hides the GPU). Check: hit rate and wrong hits across 3+ thresholds; the "policy 2024 vs 2025"
-  wrong hit shown, and one way to block it.
-- [ ] S4 Router: Haiku for simple, Sonnet for hard. Check: on ~10 tasks, route chosen, answer
-  quality (Taras judges), cost saved against all-Sonnet. Quality on 10 tasks judged by one person
-  is a stated limit, not a result.
-- [ ] S7 Mock interview, 15 minutes, fresh session. Check: Taras answers each question with a number
-  he measured.
-- [ ] S5 Local guard, 40-minute timebox, only if time is left. Gemma runs in Taras's own terminal
-  (`scripts/gemma_guard.py`, command in README): the sandbox hides Metal from MLX. Claude adds the
-  regex side and the comparison. Check: a table of what each catches and the seconds each adds.
+- ✅ S0 Setup: files, venv, Gemma download, critic run.
+- ✅ S0.5 Smoke test: one Haiku call (max_tokens=5) with the `SSL_CERT_FILE` fix;
+  `models.list` shows both model IDs.
+- [ ] S1 Proxy + cost log + exact cache + SQL. Cost counts `cache_creation_input_tokens` and
+  `cache_read_input_tokens` from the start. Cache key: model, system, temperature, tenant,
+  normalised messages. Check: repeat is a hit with 0 tokens and ~0 ms; tenants never share a hit;
+  hit rate on the query set; SQL gives cost per model; 402 fires with a lowered cap.
+- [ ] S3 Provider prompt caching. First read Anthropic's docs for minimum cacheable length and
+  prices (cite page and date). Check: second call has `cache_read_input_tokens` > 0 and the cost
+  drop matches the docs.
+- [ ] S2 Semantic cache, `sentence-transformers` on CPU. Check: hit rate and wrong hits at 3+
+  thresholds; the "policy 2024 vs 2025" wrong hit shown, and one way to block it.
+- [ ] S4 Router: Haiku for simple, Sonnet for hard. Check on ~10 tasks: route, quality (Taras
+  judges; a stated limit, not a result), cost saved against all-Sonnet.
+- [ ] S5 Local guard, 40-minute timebox. Gemma in Taras's terminal (`scripts/gemma_guard.py`,
+  README), regex side and comparison by Claude. Check: what each catches, seconds each adds.
+  First fix the thinking problem (journal).
 
 ## Time
-Decided 2026-11-23 23:00: Taras sleeps now; the call is 2026-11-24 at 12:00. Work resumes in the
-morning; hard stop 11:00 to rest before the call. Steps not done by then go to Later.
+2026-11-24: call at 13:00, stop at 12:30. Mock interview 12:15-12:30 in a fresh session (sees
+only the journal and the call prep), whatever step we are on. Undone steps go to Later.
 
 ## Later
-- S6 Streaming: cut by the critic, no step depends on it. Say in the call: token counts arrive in
-  the final stream event, so the log row is written when the stream closes.
+- S6 Streaming. Line for the call: token counts arrive in the final stream event, so the log row
+  is written when the stream closes.
