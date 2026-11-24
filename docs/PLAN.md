@@ -33,7 +33,7 @@ of every step (S1 30 min, S3 20, S2 25, S4 20, S5 15), then go deeper in the tim
   drop matches the docs.
 - ✅ S2 Semantic cache, `sentence-transformers` on CPU. Check: hit rate and wrong hits at 3+
   thresholds; the "policy 2024 vs 2025" wrong hit shown, and one way to block it.
-- [ ] S4 Router: Haiku for simple, Sonnet for hard. Check on ~10 tasks: route, quality (Taras
+- ✅ S4 Router: Haiku for simple, Sonnet for hard. Check on ~10 tasks: route, quality (Taras
   judges; a stated limit, not a result), cost saved against all-Sonnet.
 - [ ] S5 Local guard, 40-minute timebox. Gemma in Taras's terminal (`scripts/gemma_guard.py`,
   README), regex side and comparison by Claude. Check: what each catches, seconds each adds.

@@ -1,0 +1,12 @@
+[
+  {"id": 1, "level": "simple", "q": "How long is the frame warranty?"},
+  {"id": 2, "level": "simple", "q": "Do you ship outside the EU?"},
+  {"id": 3, "level": "simple", "q": "How do I reset the display?"},
+  {"id": 4, "level": "simple", "q": "What battery does the Nimbus City use?"},
+  {"id": 5, "level": "simple", "q": "Is a flat tyre covered by the warranty?"},
+  {"id": 6, "level": "simple", "q": "When is the first free service?"},
+  {"id": 7, "level": "hard", "q": "I bought a Nimbus Trail for 3,200 EUR, rode it 40 km, and want to return it on day 45 from Lyon. How much refund do I get and what do I pay?"},
+  {"id": 8, "level": "hard", "q": "My bike was stolen. It was locked with a cable lock and I went to the police 3 days later. Am I covered by AB12? Go through each condition."},
+  {"id": 9, "level": "hard", "q": "I ride 45 km each way to work on hilly roads and want to take my 4-year-old along. Which Nimbus model fits, and what will I need to buy elsewhere?"},
+  {"id": 10, "level": "hard", "q": "Write a short polite reply to Marie, who ordered a custom-colour frame 5 days ago and now wants to cancel. Offer her the options she has."}
+]

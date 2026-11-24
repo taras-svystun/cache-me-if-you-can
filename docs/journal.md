@@ -104,3 +104,20 @@ Newest at the bottom.
 - Code fix during the step: first version counted a hit as right when the label said "same answer"
   without checking WHICH entry was nearest; the 0.70 row showed a false right hit. Labels now name
   the expected cached question.
+
+## 2026-11-24 · S4 router (thin slice)
+- `gateway/router.py`: rules router (hard words or > 140 chars -> Sonnet) and Haiku classifier
+  ("simple"/"hard", unsure -> hard). Both lean to Sonnet when unsure: Taras's call, a wrong answer
+  costs more than overpaying.
+- `scripts/s4_router.py`, 10 tasks (6 simple lookups, 4 hard: refund arithmetic, AB12 conditions,
+  model choice, customer email), each run on both models; answers in `results/router_answers.md`.
+- Both routers: 0 misroutes. Cost: all-Sonnet $0.0185, routed $0.0099 = 46% saved; the Haiku
+  router's own calls cost $0.000144 (under 1% of all-Sonnet) but add ~500 ms per request, which
+  roughly doubles the latency of a simple Haiku answer (~600 ms).
+- Taras guessed ~2x saving (right: 46%), router ~5% of cost (actual < 1%), +500 ms (right).
+- The surprise: Haiku 5.5 got the "hard" ones right too (refund 2,720 EUR on task 7; both failed
+  AB12 conditions on task 8). Sonnet adds detail, not correctness, on this set. So all-Haiku would
+  save ~95%. Lesson: measure quality per task class first; a router pays only where the cheap
+  model actually fails. Quality judged by Claude on 2 tasks; Taras has not judged yet (stated limit).
+- Sonnet task 1 cost $0.0047 vs ~$0.0008 for the next simple ones: it paid the cache write of the
+  policy prefix. Caches are per model, so routing between two models writes two caches.
