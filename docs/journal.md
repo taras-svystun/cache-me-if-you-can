@@ -38,3 +38,7 @@ Newest at the bottom.
   `claude-sonnet-5-5`; one Haiku call (max_tokens=5) replied "Hi there!" with 12 input and 5 output
   tokens. Usage also carries `cache_creation_input_tokens`, `cache_read_input_tokens` and a split
   of cache writes into 5-minute and 1-hour TTL: the S1 cost formula must read them.
+- Decided before S1: normalisation trims whitespace but does not lowercase. Taras's reason: case
+  can change meaning ("Apple" vs "apple") or be part of an ID (policy number `Ab12` vs `AB12`),
+  and a wrong hit costs more than a missed one. Also new rule in CLAUDE.md: a short primer before
+  every guess question, after Taras could not parse "hit rate of the exact cache" cold.

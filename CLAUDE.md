@@ -17,7 +17,10 @@ Claude writes the code; Taras owns the ideas and must be able to explain every p
 Taras writes code only where one line gives 90% of the understanding (the exact-cache key,
 the SQL query): he tries, Claude corrects, move on.
 
-Each step follows one loop: Taras guesses the result, Claude builds, we measure, checkpoint.
+Each step follows one loop: primer, Taras guesses the result, Claude builds, we measure, checkpoint.
+The primer comes before any guess question: in about 30 seconds of reading, what the mechanism
+does, what each metric in the question means and what a good or bad value feels like (a tiny
+example). A question Taras cannot parse without it is a wasted question.
 Explain each new piece by its mechanism: the idea, how the code works step by step, why it
 behaves as it does, and where it stops working.
 

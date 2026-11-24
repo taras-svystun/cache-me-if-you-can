@@ -24,7 +24,8 @@ Work down the list until time runs out.
   `models.list` shows both model IDs.
 - [ ] S1 Proxy + cost log + exact cache + SQL. Cost counts `cache_creation_input_tokens` and
   `cache_read_input_tokens` from the start. Cache key: model, system, temperature, tenant,
-  normalised messages. Check: repeat is a hit with 0 tokens and ~0 ms; tenants never share a hit;
+  normalised messages (whitespace only, no lowercase: Taras's call, case can carry meaning, e.g.
+  policy IDs). Check: repeat is a hit with 0 tokens and ~0 ms; tenants never share a hit;
   hit rate on the query set; SQL gives cost per model; 402 fires with a lowered cap.
 - [ ] S3 Provider prompt caching. First read Anthropic's docs for minimum cacheable length and
   prices (cite page and date). Check: second call has `cache_read_input_tokens` > 0 and the cost
