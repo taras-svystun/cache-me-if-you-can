@@ -33,9 +33,9 @@ say how far along we are and what is left.
   passes $2.50. Taras's key lives in `.env` (gitignored). Never read or print it.
   Never use the `OPENAI_API_KEY` in the shell: owner unknown, may be a client's.
 - Demos run in-process with FastAPI TestClient: no open port.
-- Python TLS in the sandbox: set `SSL_CERT_FILE` to
-  `.venv/lib/python3.11/site-packages/pip/_vendor/certifi/cacert.pem`, else HTTPS from Python
-  fails with `OSStatus -26276`. Hugging Face downloads also need `HF_HUB_DISABLE_XET=1`.
+- Python TLS in the sandbox: `SSL_CERT_FILE` must point at a CA bundle, else HTTPS from Python
+  fails with `OSStatus -26276`. `gateway/__init__.py` sets it to `certifi.where()`.
+  Hugging Face downloads also need `HF_HUB_DISABLE_XET=1`.
 - `HF_HOME=./.cache` (gitignored).
 - Test data is made up. No real personal or company data in prompts.
 

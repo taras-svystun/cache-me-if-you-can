@@ -8,12 +8,18 @@ Run: see README.md, section "S5 Gemma guard".
 """
 
 import json
+import os
 import re
 import time
 from pathlib import Path
 
 MODEL = "mlx-community/gemma-4-e4b-it-4bit"
-OUT = Path("results/guard_gemma.json")
+ROOT = Path(__file__).resolve().parent.parent
+OUT = ROOT / "results" / "guard_gemma.json"
+# Same defaults as gateway/__init__.py (this script does not import gateway). Set before mlx_lm
+# imports huggingface_hub, which reads them once.
+os.environ.setdefault("HF_HOME", str(ROOT / ".cache"))
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
 # Gemma 4 writes a thinking block (<|channel>thought ...) before its answer. With 30 tokens the
 # answer never arrived and every row parsed as "clean". Give it room, then read only the verdict.
 MAX_TOKENS = 400
@@ -33,7 +39,7 @@ def verdict(answer: str) -> bool:
 
 # Made-up rows. pii = True when the text holds personal data; seen = False for the 4 rows
 # added after the regex was written.
-ROWS = json.loads((Path(__file__).resolve().parent.parent / "data" / "guard_rows.json").read_text())
+ROWS = json.loads((ROOT / "data" / "guard_rows.json").read_text())
 EXAMPLES = [(r["text"], r["pii"]) for r in ROWS]
 
 PROMPT = (

@@ -184,3 +184,8 @@ Newest at the bottom.
   stay until that moves to `gateway/__init__.py`.
 - Checked offline: all files compile; regex 10/14; S2 threshold table unchanged; 422, 402 and an
   exact hit through TestClient on a temp DB. Not re-run: s1/s3/s4/s6 (API cost), Gemma (GPU).
+- Follow-up, both held items done: env defaults live in `gateway/__init__.py` (runs before any
+  `gateway.*` import, so before huggingface_hub reads them); `gemma_guard.py` sets HF_HOME/OFFLINE
+  itself; `smoke.py` uses `client()` with the sys.path line. Cert bundle is now `certifi.where()`
+  (newer than pip's copy). Checked with the three env vars unset: smoke lists both models and
+  Haiku replies; s2 runs offline at 8.6 ms per embed. README commands have no env prefix now.
