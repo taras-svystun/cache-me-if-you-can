@@ -12,17 +12,14 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from fastapi.testclient import TestClient  # noqa: E402
 
-from gateway.proxy import PRICES, app, db  # noqa: E402
+from gateway.proxy import PRICES, app, reset  # noqa: E402
 
 POLICY = (ROOT / "data" / "policy.md").read_text()
 SYSTEM = ("You answer customer questions for Nimbus Bikes using only the policy below. "
           "Answer in one short sentence.\n\n" + POLICY)
 SHORT = "You answer customer questions for Nimbus Bikes, a made-up e-bike shop. One sentence."
 
-app.state.run_id = f"s3-{int(time.time())}"
-con = db()
-con.execute("DELETE FROM exact_cache")
-con.commit()
+reset(f"s3-{int(time.time())}")
 api = TestClient(app)
 
 calls = [

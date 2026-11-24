@@ -14,8 +14,7 @@ He wants to say "I measured this", not "I would do it like this".
   the mock interview is minor, the building and measuring is the point.
 - Each mechanism explained plainly, with where it stops working.
 - Real numbers he measured himself: hit rate, wrong hits, $ saved, ms added.
-- Spend stays tiny ($3) and nothing leaks: his key never printed, the shell's `OPENAI_API_KEY`
-  never used (owner unknown), only made-up data in prompts.
+- Spend stays tiny ($3) and nothing leaks: only made-up data in prompts (key rules: `CLAUDE.md`).
 
 ## Related
 - Call prep and TheEngine facts:

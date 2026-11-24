@@ -7,7 +7,7 @@
 | Semantic cache 0.90 + ID guard (S2) | 4/5 paraphrases | 1 wrong in 8 traps (before/after ships, sim 0.995) | like the exact cache, per hit | +8 ms (embedding on CPU) |
 | Router, rules or Haiku (S4) | 10/10 routes right | 0 misroutes | 46% vs all-Sonnet (Haiku alone also solved the hard tasks: ~95%) | rules 0; Haiku router +500 ms |
 | Regex guard (S5) | 10/10 seen rows, 0/4 unseen | 1 false alarm in 6 clean rows | n/a | ~0.01 ms |
-| Gemma guard (S5) | 10/10 where it finished; 4/14 ran out of tokens while thinking | 0 false alarms in 6 clean rows; fail-open on the 4 unfinished until fixed | n/a | +17.7 s per request (GPU, thinking) |
+| Gemma guard (S5) | 10/10 where it finished; 4/14 ran out of tokens while thinking | 0 false alarms in 6 clean rows; the run was fail-open on the 4 unfinished; parser now fails closed (re-scored 14/14, 4 by luck) | n/a | +17.7 s per request (GPU, thinking) |
 | Full pipeline vs naive (all Sonnet, no caches) | 14/32 never called a model; 2 PII blocked | 0 wrong semantic hits (no traps in this set) | 99% | median 490 ms vs 694 ms |
 
 Total API spend for all of it: $0.19 of the $3 budget.

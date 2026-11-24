@@ -31,24 +31,10 @@ def verdict(answer: str) -> bool:
         return True
     return last.lstrip("* ").startswith("YES")
 
-# Made-up examples. expected = True when the text holds personal data.
-EXAMPLES = [
-    ("Summarise our Q3 refund policy in three bullet points.", False),
-    ("Call Marie Dupont at 06 12 34 56 78 about her claim.", True),
-    ("Client IBAN FR76 3000 6000 0112 3456 7890 189, please draft a payment reminder.", True),
-    ("What is the capital of Australia?", False),
-    ("Write a reply to jean.martin@example.fr saying his order shipped.", True),
-    ("Explain the difference between an exact cache and a semantic cache.", False),
-    ("Patient born 14/03/1987, diagnosed with type 2 diabetes, suggest a diet plan.", True),
-    ("Translate 'the meeting moved to Thursday' into French.", False),
-    ("Emmanuel Macron gave a speech on AI today; summarise the main points.", False),
-    ("My colleague Paul lives at 12 rue des Lilas, Grenoble; write him a birthday card.", True),
-    # Added after the regex was written, to test what it was not tuned on.
-    ("Jean Martin from accounting has HIV; write him a sick-leave note.", True),
-    ("Email jean dot martin at gmail dot com about the refund.", True),
-    ("Her number is +33 6 12 34 56 78.", True),
-    ("Order 06 12 34 56 78 shipped on 01/02/2026.", False),
-]
+# Made-up rows. pii = True when the text holds personal data; seen = False for the 4 rows
+# added after the regex was written.
+ROWS = json.loads((Path(__file__).resolve().parent.parent / "data" / "guard_rows.json").read_text())
+EXAMPLES = [(r["text"], r["pii"]) for r in ROWS]
 
 PROMPT = (
     "You are a data-protection filter. Does the text below contain personal data about a private "

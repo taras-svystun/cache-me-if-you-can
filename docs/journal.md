@@ -170,3 +170,17 @@ Newest at the bottom.
 - Taras's guesses: guard first because it is local and before anything stores the prompt (right:
   caches and the log store it, Claude sends it out). Saving 50-70% (actual 99%; he did not count
   that the router and provider caching multiply). Semantic hits 10/30 (actual 5; exact took 9).
+
+## 2026-11-24 · Tidy
+- 15 cuts proposed; a read-only subagent checked each before any edit. Done: stale PLAN lines
+  (temperature in the key, S5 open, Time holding steps, "S6 Streaming"), Rules that repeated
+  CLAUDE.md, BRIEF key clause, GLOSSARY fixes + 5 terms, Gemma row history in `summary.md`,
+  proxy docstring, `log()` inlined, `layer` in CREATE (the live DB already had it: 185 rows, $0.1884
+  kept), guard/router imports at top, semantic `tenant` -> `scope`, guard rows in
+  `data/guard_rows.json` (with `seen`), `reset(run_id)` shared by 4 demos, `requirements.txt`.
+- Held back, the subagent found they break: `smoke.py` importing `gateway` (scripts/ is on
+  sys.path, not the root); env defaults in `load_env()` (huggingface_hub reads `HF_HOME` and
+  `HF_HUB_OFFLINE` at import, and s2/s6 load MiniLM before `load_env()` runs). README env prefixes
+  stay until that moves to `gateway/__init__.py`.
+- Checked offline: all files compile; regex 10/14; S2 threshold table unchanged; 422, 402 and an
+  exact hit through TestClient on a temp DB. Not re-run: s1/s3/s4/s6 (API cost), Gemma (GPU).

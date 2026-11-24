@@ -1,9 +1,8 @@
 """The gateway: a FastAPI proxy in front of Claude.
 
-One endpoint, POST /v1/messages. For each request:
-1. build the exact-cache key; on a hit, return the stored answer (0 tokens, no Claude call);
-2. on a miss, refuse with 402 if the logged cost already passed the spend cap;
-3. call Claude, store the answer under the key, write one cost-log row.
+One endpoint, POST /v1/messages. Pipeline, cheapest and safest first:
+guard -> exact cache -> semantic cache -> spend cap -> router -> Claude.
+Each layer only sees what the layers before it let through; every request writes one cost-log row.
 """
 import hashlib
 import json
@@ -16,11 +15,13 @@ import anthropic
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
+from gateway.guard import scan
+from gateway.router import route_rules
+
 ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = Path(os.environ.get("GATEWAY_DB", ROOT / "results" / "gateway.db"))
 
-# USD per million tokens. Source: claude-api skill model table and prompt-caching
-# economics (cached 2026-11-03). S3 checks these against the live pricing page.
+# USD per million tokens. Checked 2026-11-24 against platform.claude.com pricing page.
 # Cache writes: 1.25x input (5-minute TTL), 2x input (1-hour TTL).
 PRICES = {
     "claude-haiku-5-5": dict(input=0.10, output=0.50, write_5m=0.125, write_1h=0.20, read=0.01),
@@ -73,11 +74,20 @@ def db() -> sqlite3.Connection:
     CREATE TABLE IF NOT EXISTS log (
         id INTEGER PRIMARY KEY, ts REAL, run_id TEXT, tenant TEXT, model TEXT,
         input_tokens INT, output_tokens INT, cache_write_tokens INT, cache_read_tokens INT,
-        cost_usd REAL, cache_hit INT, latency_ms REAL);
+        cost_usd REAL, cache_hit INT, latency_ms REAL, layer TEXT);
     CREATE TABLE IF NOT EXISTS exact_cache (key TEXT PRIMARY KEY, response TEXT);
     """)
-    if "layer" not in [c[1] for c in con.execute("PRAGMA table_info(log)")]:
-        con.execute("ALTER TABLE log ADD COLUMN layer TEXT")  # added with the pipeline
+    return con
+
+
+def reset(run_id: str) -> sqlite3.Connection:
+    """Start a demo run: new run_id, empty exact cache, empty semantic cache (if loaded)."""
+    app.state.run_id = run_id
+    con = db()
+    con.execute("DELETE FROM exact_cache")
+    con.commit()
+    if _semantic is not None:
+        _semantic.entries.clear()
     return con
 
 
@@ -117,8 +127,6 @@ def semantic_cache():
 
 @app.post("/v1/messages")
 def messages(req: Req, x_tenant: str = Header(...)):
-    """Pipeline, cheapest and safest first: guard -> exact cache -> semantic cache -> spend cap
-    -> router -> Claude. Each layer only sees what the layers before it let through."""
     t0 = time.perf_counter()
     trace = {}
 
@@ -129,9 +137,13 @@ def messages(req: Req, x_tenant: str = Header(...)):
         t0 = now
 
     def done(layer, text, cost=0.0, model=req.model, usage=None, toks=(0, 0, 0, 0)):
-        total = sum(trace.values())
-        log(con, x_tenant, model, *toks, cost, int(layer in ("exact", "semantic")), total, layer)
-        out = {"text": text, "layer": layer, "model": model, "cache_hit": layer in ("exact", "semantic"),
+        total, hit = sum(trace.values()), layer in ("exact", "semantic")
+        con.execute("INSERT INTO log (ts, run_id, tenant, model, input_tokens, output_tokens,"
+                    " cache_write_tokens, cache_read_tokens, cost_usd, cache_hit, latency_ms, layer)"
+                    " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (time.time(), app.state.run_id, x_tenant, model, *toks, cost, int(hit), total, layer))
+        con.commit()
+        out = {"text": text, "layer": layer, "model": model, "cache_hit": hit,
                "cost_usd": cost, "latency_ms": total, "trace_ms": trace}
         return {**out, "usage": usage} if usage else out
 
@@ -140,7 +152,6 @@ def messages(req: Req, x_tenant: str = Header(...)):
 
     # 1. Guard first: every later layer stores the prompt (caches, log) or sends it out (Claude).
     if req.guard:
-        from gateway.guard import scan
         # User messages only: the system prompt is the operator's own text (the policy holds a
         # public service email on purpose), so scanning it blocked every request.
         found = scan(" ".join(m["content"] for m in req.messages if m["role"] == "user"))
@@ -173,7 +184,6 @@ def messages(req: Req, x_tenant: str = Header(...)):
     # 5. Router: only requests that will really call a model get routed.
     model = req.model
     if model == "auto":
-        from gateway.router import route_rules
         model = route_rules(question)
         lap("router")
 
@@ -201,11 +211,3 @@ def messages(req: Req, x_tenant: str = Header(...)):
                 (u.input_tokens, u.output_tokens, u.cache_creation_input_tokens or 0,
                  u.cache_read_input_tokens or 0))
 
-
-def log(con, tenant, model, inp, out, cw, cr, cost, hit, ms, layer):
-    con.execute("INSERT INTO log (ts, run_id, tenant, model, input_tokens, output_tokens,"
-                " cache_write_tokens, cache_read_tokens, cost_usd, cache_hit, latency_ms, layer)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                (time.time(), app.state.run_id, tenant, model, inp, out, cw, cr, cost, hit, ms,
-                 layer))
-    con.commit()

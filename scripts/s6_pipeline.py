@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from fastapi.testclient import TestClient  # noqa: E402
 
-from gateway.proxy import app, db, semantic_cache  # noqa: E402
+from gateway.proxy import app, db, reset, semantic_cache  # noqa: E402
 
 POLICY = (ROOT / "data" / "policy.md").read_text()
 SYSTEM = ("You answer customer questions for Nimbus Bikes using only the policy below. "
@@ -27,11 +27,7 @@ api = TestClient(app)
 
 
 def run(name, body_extra):
-    app.state.run_id = f"{name}-{int(time.time())}"
-    con = db()
-    con.execute("DELETE FROM exact_cache")
-    con.commit()
-    semantic_cache().entries.clear()
+    reset(f"{name}-{int(time.time())}")
     rows = []
     for q in queries:
         body = {"system": SYSTEM, "max_tokens": 60, "messages": [{"role": "user", "content": q["q"]}],

@@ -6,13 +6,11 @@ Built to measure how each mechanism behaves.
 
 ## Setup
 ```
-python3 -m venv .venv
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 cd ~/Documents/Projects/cache-me-if-you-can && read -s "k?Key: " && printf 'ANTHROPIC_API_KEY=%s\n' "$k" > .env && unset k
 ```
 
 ## Run
-Commands are added as each step lands.
-
 ### S0.5 Smoke test (one tiny Haiku call)
 ```
 cd ~/Documents/Projects/cache-me-if-you-can && SSL_CERT_FILE=.venv/lib/python3.11/site-packages/pip/_vendor/certifi/cacert.pem .venv/bin/python scripts/smoke.py
@@ -52,5 +50,5 @@ cd ~/Documents/Projects/cache-me-if-you-can && HF_HOME=./.cache HF_HUB_OFFLINE=1
 ```
 cd ~/Documents/Projects/cache-me-if-you-can && HF_HOME=./.cache HF_HUB_OFFLINE=1 .venv/bin/python scripts/gemma_guard.py
 ```
-Prints the device, load time, then streams Gemma's verdict on 10 made-up requests, with OK/MISS and
+Prints the device, load time, then streams Gemma's verdict on the 14 made-up rows in `data/guard_rows.json`, with OK/MISS and
 seconds each. Saves `results/guard_gemma.json`.

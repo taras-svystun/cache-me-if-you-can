@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from fastapi.testclient import TestClient  # noqa: E402
 
-from gateway.proxy import app, db  # noqa: E402
+from gateway.proxy import app, reset  # noqa: E402
 
 SYSTEM = ("You answer customer questions for Nimbus Bikes, a made-up e-bike shop. "
           "Answer in one short sentence. If you do not know, say so.")
@@ -23,10 +23,7 @@ FROM log WHERE run_id = ? GROUP BY model
 """
 
 run_id = f"s1-{int(time.time())}"
-app.state.run_id = run_id
-con = db()
-con.execute("DELETE FROM exact_cache")  # every run starts with a cold cache
-con.commit()
+con = reset(run_id)  # every run starts with a cold cache
 
 api = TestClient(app)
 queries = json.loads((ROOT / "data" / "queries.json").read_text())

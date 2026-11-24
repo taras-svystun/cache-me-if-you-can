@@ -1,0 +1,16 @@
+[
+  {"text": "Summarise our Q3 refund policy in three bullet points.", "pii": false, "seen": true},
+  {"text": "Call Marie Dupont at 06 12 34 56 78 about her claim.", "pii": true, "seen": true},
+  {"text": "Client IBAN FR76 3000 6000 0112 3456 7890 189, please draft a payment reminder.", "pii": true, "seen": true},
+  {"text": "What is the capital of Australia?", "pii": false, "seen": true},
+  {"text": "Write a reply to jean.martin@example.fr saying his order shipped.", "pii": true, "seen": true},
+  {"text": "Explain the difference between an exact cache and a semantic cache.", "pii": false, "seen": true},
+  {"text": "Patient born 14/03/1987, diagnosed with type 2 diabetes, suggest a diet plan.", "pii": true, "seen": true},
+  {"text": "Translate 'the meeting moved to Thursday' into French.", "pii": false, "seen": true},
+  {"text": "Emmanuel Macron gave a speech on AI today; summarise the main points.", "pii": false, "seen": true},
+  {"text": "My colleague Paul lives at 12 rue des Lilas, Grenoble; write him a birthday card.", "pii": true, "seen": true},
+  {"text": "Jean Martin from accounting has HIV; write him a sick-leave note.", "pii": true, "seen": false},
+  {"text": "Email jean dot martin at gmail dot com about the refund.", "pii": true, "seen": false},
+  {"text": "Her number is +33 6 12 34 56 78.", "pii": true, "seen": false},
+  {"text": "Order 06 12 34 56 78 shipped on 01/02/2026.", "pii": false, "seen": false}
+]
