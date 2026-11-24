@@ -42,3 +42,23 @@ Newest at the bottom.
   can change meaning ("Apple" vs "apple") or be part of an ID (policy number `Ab12` vs `AB12`),
   and a wrong hit costs more than a missed one. Also new rule in CLAUDE.md: a short primer before
   every guess question, after Taras could not parse "hit rate of the exact cache" cold.
+
+## 2026-11-24 · S1 exact cache (thin slice)
+- `gateway/proxy.py`: POST /v1/messages; exact-cache key = sha256 of model, system, max_tokens,
+  tenant, whitespace-normalised messages; cost log in SQLite `results/gateway.db`; 402 past the cap.
+- Changed from plan: `temperature` left out of the key. SDK 2.13 has no `temperature` parameter
+  (API version 2026-10-21 rejects it), and a field the provider ignores cannot change the answer.
+  `max_tokens` is in instead: it can cut the answer short.
+- Prices (USD/MTok, claude-api skill, cached 2026-11-03; S3 checks the live page): Haiku 5.5
+  0.10 in / 0.50 out / 0.01 cache read; Sonnet 5.5 2 / 10 / 0.10; cache writes 1.25x (5 min), 2x (1 h).
+- `scripts/s1_exact.py` on 30 made-up queries: hit rate 9/30 = 30% (6 repeats, 3 of 4 whitespace
+  variants; 0 paraphrases, 0 case changes, 0 other-tenant). Taras guessed 10/30. The 4th whitespace
+  variant ("e-bike ?") adds a space where there was none, which collapsing runs does not undo.
+- Latency median: hit 0.64 ms, miss 577 ms (Haiku, ~60 output tokens). Taras guessed 1-10 ms / 0.5-1.5 s.
+- Cost: 21 misses = $0.000656 total; hits saved ~$0.00028. 402 fires with the cap at $0.000001;
+  a cached query is still served (hits are free, so the cap check sits after the cache lookup).
+- Every answer is "I don't have the details": there is no policy document yet. S3 adds one to the
+  system prompt, which is also what makes provider prompt caching worth having.
+- Guess review: wrong hits in an exact cache come from an input that changes the answer but is not
+  in the key (date, updated document, sampling). Cap overshoot is at most one request's worst cost,
+  times N with N requests in flight; the fix is to reserve the worst case before the call.

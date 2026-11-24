@@ -18,6 +18,11 @@ Commands are added as each step lands.
 cd ~/Documents/Projects/cache-me-if-you-can && SSL_CERT_FILE=.venv/lib/python3.11/site-packages/pip/_vendor/certifi/cacert.pem .venv/bin/python scripts/smoke.py
 ```
 
+### S1 Exact cache, cost log, 402 (about 30 Haiku calls, under $0.001)
+```
+cd ~/Documents/Projects/cache-me-if-you-can && SSL_CERT_FILE=.venv/lib/python3.11/site-packages/pip/_vendor/certifi/cacert.pem .venv/bin/python scripts/s1_exact.py
+```
+
 ### S5 Gemma guard (run in your own terminal, not in Claude Code: it needs the GPU)
 ```
 cd ~/Documents/Projects/cache-me-if-you-can && HF_HOME=./.cache HF_HUB_OFFLINE=1 .venv/bin/python scripts/gemma_guard.py

@@ -17,12 +17,13 @@ in a SQLite cost log (model, tokens, cost, cache hit, latency). Models: `claude-
 - Out: Ollama, sandbox change for localhost, phone part. Repo private until after the call.
 
 ## Steps, in priority order
-Work down the list until time runs out.
+Work down the list until time runs out. 2026-11-24, Taras's call: breadth first, a thin slice
+of every step (S1 30 min, S3 20, S2 25, S4 20, S5 15), then go deeper in the time left.
 
 - ✅ S0 Setup: files, venv, Gemma download, critic run.
 - ✅ S0.5 Smoke test: one Haiku call (max_tokens=5) with the `SSL_CERT_FILE` fix;
   `models.list` shows both model IDs.
-- [ ] S1 Proxy + cost log + exact cache + SQL. Cost counts `cache_creation_input_tokens` and
+- ✅ S1 Proxy + cost log + exact cache + SQL. Cost counts `cache_creation_input_tokens` and
   `cache_read_input_tokens` from the start. Cache key: model, system, temperature, tenant,
   normalised messages (whitespace only, no lowercase: Taras's call, case can carry meaning, e.g.
   policy IDs). Check: repeat is a hit with 0 tokens and ~0 ms; tenants never share a hit;
