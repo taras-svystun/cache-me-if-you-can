@@ -43,6 +43,12 @@ of every step (S1 30 min, S3 20, S2 25, S4 20, S5 15), then go deeper in the tim
 2026-11-24: call at 13:00, stop at 12:30. Mock interview 12:15-12:30 in a fresh session (sees
 only the journal and the call prep), whatever step we are on. Undone steps go to Later.
 
+- ✅ Pipeline: all layers in one proxy, against a naive gateway (`scripts/s6_pipeline.py`).
+- [ ] Tidy: check every file for extra text, cut and merge (next session's first job).
+- [ ] Spend cap with reserve: block the worst-case cost before the call, settle after (15 min).
+- [ ] Gemma speed: stop the thinking (prefill an empty thought block), re-run in Taras's terminal.
+- [ ] Taras explains each mechanism, Claude plays the interviewer (3 min each).
+
 ## Later
 - S6 Streaming. Line for the call: token counts arrive in the final stream event, so the log row
   is written when the stream closes.

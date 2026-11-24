@@ -21,11 +21,15 @@ MAX_TOKENS = 400
 
 def verdict(answer: str) -> bool:
     """True if the final answer says YES. The final answer is the text after the last channel
-    marker (end of thinking); without a marker, the last line. Thinking may say YES or NO too."""
+    marker (end of thinking); without a marker, the last line. Thinking may say YES or NO too.
+    Fail closed: no final NO (for example, thinking ran out of tokens) counts as YES, so an
+    unfinished check blocks the request instead of letting it through."""
     final = re.split(r"<\|?channel\|?>", answer)[-1]
     lines = [l for l in final.strip().splitlines() if l.strip()]
-    last = lines[-1] if lines else ""
-    return bool(re.match(r"\W*YES\b", last.strip().upper()))
+    last = lines[-1].strip().upper() if lines else ""
+    if final.lstrip().startswith("thought") or not re.match(r"\W*(YES|NO)\b", last):
+        return True
+    return last.lstrip("* ").startswith("YES")
 
 # Made-up examples. expected = True when the text holds personal data.
 EXAMPLES = [

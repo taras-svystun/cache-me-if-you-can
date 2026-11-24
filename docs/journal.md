@@ -136,3 +136,37 @@ Newest at the bottom.
 - Gemma fix, not yet run: `MAX_TOKENS` 30 -> 400, and `verdict()` reads only the last line after
   the last channel marker, so YES/NO inside the thinking does not count. Checked offline on 4 made-up
   strings; the real run needs Taras's terminal (GPU).
+
+## 2026-11-24 · S5 Gemma run (Taras's terminal)
+- 10/14 correct, 17.7 s per row on average, load 5.0 s (`results/guard_gemma.json`).
+- On the 10 rows where Gemma reached a verdict: 10/10, including the spelled-out email and +33
+  phone that regex missed, and Macron as a public figure. The 4 misses all ran out of the
+  400-token budget mid-thinking (~20 s each, 1.4-1.7k characters of thought), and the parser
+  read "no verdict" as clean: fail-open, so 4 PII rows would have reached the cloud.
+- Fix applied: `verdict()` fails closed (no final YES/NO counts as PII). On the saved answers
+  that scores 14/14, but 4 of those are luck: the unfinished rows happened to be PII rows.
+- Taras guessed 12-13/14 and 4-6 s. The time was 3x his guess: thinking tokens, ~20 tokens/s.
+- Next for speed (not done): stop the thinking (prefill an empty thought block in the prompt),
+  then re-run; a guard that costs 18 s per request is not usable in front of a 0.6 s Haiku call.
+
+## 2026-11-24 · Pipeline: all layers in one proxy
+- `gateway/proxy.py` now runs guard (regex) -> exact cache -> semantic cache (0.90 + ID guard,
+  scoped by tenant, model, system, max_tokens) -> spend cap -> router (`model: "auto"`, rules)
+  -> Claude, with per-layer times in `trace_ms` and a `layer` column in the cost log.
+- Bug found on the first run: every request was blocked (422). Cause: the guard also scanned the
+  system prompt, and the made-up policy holds a public service email (`scan(policy)` -> ['email']).
+  Fix: scan user messages only; the system prompt is the operator's own text. The demo script also
+  hid the cause by labelling any non-200 as "blocked"; now only 422 is.
+- `scripts/s6_pipeline.py`, 30 S1 queries + 2 PII rows, vs naive (all Sonnet, no caches):
+  layers: claude 16, exact 9, semantic 5, blocked 2. Cost $0.000825 vs $0.0834: 99% saved.
+  Median latency 490 ms vs 694 ms. PII sent to cloud: 0 vs 2.
+- Where the 99% comes from: the rules router sent every miss to Haiku (20x cheaper per token),
+  provider caching made the policy input ~9x cheaper, and 14/32 requests never called a model.
+- All 5 semantic hits were right on reading the answers (2 paraphrases, case, "e-bike ?" that the
+  exact cache missed, after-shipping paraphrase). No trap queries in this set, so 0 wrong hits says
+  little: the S2 traps are the real test.
+- Median ms per layer: guard 0.35, exact 0.1, semantic 10.2, router 0.15, claude 578,
+  store 15 (embedding the new question for the semantic cache, paid on every miss).
+- Taras's guesses: guard first because it is local and before anything stores the prompt (right:
+  caches and the log store it, Claude sends it out). Saving 50-70% (actual 99%; he did not count
+  that the router and provider caching multiply). Semantic hits 10/30 (actual 5; exact took 9).

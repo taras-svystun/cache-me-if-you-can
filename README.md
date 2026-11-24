@@ -38,6 +38,16 @@ cd ~/Documents/Projects/cache-me-if-you-can && HF_HOME=./.cache HF_HUB_OFFLINE=1
 cd ~/Documents/Projects/cache-me-if-you-can && SSL_CERT_FILE=.venv/lib/python3.11/site-packages/pip/_vendor/certifi/cacert.pem .venv/bin/python scripts/s4_router.py
 ```
 
+### S5 Regex guard (no API calls)
+```
+cd ~/Documents/Projects/cache-me-if-you-can && .venv/bin/python scripts/s5_regex_guard.py
+```
+
+### Full pipeline vs naive gateway (64 calls at most, about $0.09)
+```
+cd ~/Documents/Projects/cache-me-if-you-can && HF_HOME=./.cache HF_HUB_OFFLINE=1 SSL_CERT_FILE=.venv/lib/python3.11/site-packages/pip/_vendor/certifi/cacert.pem .venv/bin/python scripts/s6_pipeline.py
+```
+
 ### S5 Gemma guard (run in your own terminal, not in Claude Code: it needs the GPU)
 ```
 cd ~/Documents/Projects/cache-me-if-you-can && HF_HOME=./.cache HF_HUB_OFFLINE=1 .venv/bin/python scripts/gemma_guard.py

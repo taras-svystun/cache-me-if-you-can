@@ -76,21 +76,27 @@ def db() -> sqlite3.Connection:
         cost_usd REAL, cache_hit INT, latency_ms REAL);
     CREATE TABLE IF NOT EXISTS exact_cache (key TEXT PRIMARY KEY, response TEXT);
     """)
+    if "layer" not in [c[1] for c in con.execute("PRAGMA table_info(log)")]:
+        con.execute("ALTER TABLE log ADD COLUMN layer TEXT")  # added with the pipeline
     return con
 
 
 class Req(BaseModel):
-    model: str = "claude-haiku-5-5"
+    model: str = "claude-haiku-5-5"  # "auto": the router picks Haiku or Sonnet
     system: str | None = None
     messages: list[dict]
     max_tokens: int = 100
     cache_control: bool = False  # S3: ask the provider to cache the prompt prefix
+    guard: bool = True  # S5: regex PII check, blocks with 422 before anything stores or sends it
+    semantic: bool = False  # S2: semantic cache after the exact cache (loads MiniLM on first use)
+    semantic_threshold: float = 0.90
 
 
 app = FastAPI()
 app.state.cap_usd = float(os.environ.get("SPEND_CAP_USD", "2.50"))
 app.state.run_id = "dev"
 _client = None
+_semantic = None
 
 
 def client():
@@ -101,25 +107,79 @@ def client():
     return _client
 
 
+def semantic_cache():
+    global _semantic
+    if _semantic is None:
+        from gateway.semantic import SemanticCache
+        _semantic = SemanticCache()
+    return _semantic
+
+
 @app.post("/v1/messages")
 def messages(req: Req, x_tenant: str = Header(...)):
+    """Pipeline, cheapest and safest first: guard -> exact cache -> semantic cache -> spend cap
+    -> router -> Claude. Each layer only sees what the layers before it let through."""
     t0 = time.perf_counter()
+    trace = {}
+
+    def lap(name):
+        nonlocal t0
+        now = time.perf_counter()
+        trace[name] = round((now - t0) * 1000, 3)
+        t0 = now
+
+    def done(layer, text, cost=0.0, model=req.model, usage=None, toks=(0, 0, 0, 0)):
+        total = sum(trace.values())
+        log(con, x_tenant, model, *toks, cost, int(layer in ("exact", "semantic")), total, layer)
+        out = {"text": text, "layer": layer, "model": model, "cache_hit": layer in ("exact", "semantic"),
+               "cost_usd": cost, "latency_ms": total, "trace_ms": trace}
+        return {**out, "usage": usage} if usage else out
+
     con = db()
+    question = req.messages[-1]["content"]
+
+    # 1. Guard first: every later layer stores the prompt (caches, log) or sends it out (Claude).
+    if req.guard:
+        from gateway.guard import scan
+        # User messages only: the system prompt is the operator's own text (the policy holds a
+        # public service email on purpose), so scanning it blocked every request.
+        found = scan(" ".join(m["content"] for m in req.messages if m["role"] == "user"))
+        lap("guard")
+        if found:
+            done("blocked", "")
+            raise HTTPException(422, f"personal data found: {found}")
+
+    # 2. Exact cache: ~0.6 ms, never wrong for the same key.
     key = cache_key(req.model, req.system, req.max_tokens, x_tenant, req.messages)
-
     row = con.execute("SELECT response FROM exact_cache WHERE key=?", (key,)).fetchone()
+    lap("exact")
     if row:
-        ms = (time.perf_counter() - t0) * 1000
-        log(con, x_tenant, req.model, 0, 0, 0, 0, 0.0, 1, ms)
-        return {**json.loads(row[0]), "cache_hit": True, "cost_usd": 0.0, "latency_ms": ms}
+        return done("exact", json.loads(row[0])["text"])
 
-    # Checked after the cache: a hit costs nothing, so it is served even over the cap.
+    # 3. Semantic cache: ~8 ms, can be wrong. Scoped by tenant AND by everything else in the key
+    # except the question, so a different system prompt or model never shares an answer.
+    scope = cache_key(req.model, req.system, req.max_tokens, x_tenant, req.messages[:-1])
+    if req.semantic and len(req.messages) == 1:
+        hit = semantic_cache().get(scope, question, req.semantic_threshold)
+        lap("semantic")
+        if hit is not None:
+            return done("semantic", hit)
+
+    # 4. Spend cap. After the caches: a hit costs nothing, so it is served even over the cap.
     spent = con.execute("SELECT COALESCE(SUM(cost_usd), 0) FROM log").fetchone()[0]
     if spent >= app.state.cap_usd:
         raise HTTPException(402, f"spend cap reached: ${spent:.4f} >= ${app.state.cap_usd:.2f}")
 
-    kwargs = dict(model=req.model, max_tokens=req.max_tokens, messages=req.messages,
-                  thinking=THINKING[req.model])
+    # 5. Router: only requests that will really call a model get routed.
+    model = req.model
+    if model == "auto":
+        from gateway.router import route_rules
+        model = route_rules(question)
+        lap("router")
+
+    # 6. Claude.
+    kwargs = dict(model=model, max_tokens=req.max_tokens, messages=req.messages,
+                  thinking=THINKING[model])
     if req.system and req.cache_control:
         # Breakpoint on the system block: the shared document is the prefix to reuse.
         # (A top-level marker would land on the last message, so the question would be in
@@ -129,21 +189,23 @@ def messages(req: Req, x_tenant: str = Header(...)):
     elif req.system:
         kwargs["system"] = req.system
     r = client().messages.create(**kwargs)
+    lap("claude")
 
     text = "".join(b.text for b in r.content if b.type == "text")
     u = r.usage
-    cost = cost_usd(req.model, u)
-    ms = (time.perf_counter() - t0) * 1000
     con.execute("INSERT OR REPLACE INTO exact_cache VALUES (?, ?)", (key, json.dumps({"text": text})))
-    log(con, x_tenant, req.model, u.input_tokens, u.output_tokens,
-        u.cache_creation_input_tokens or 0, u.cache_read_input_tokens or 0, cost, 0, ms)
-    return {"text": text, "cache_hit": False, "cost_usd": cost, "latency_ms": ms,
-            "usage": u.model_dump()}
+    if req.semantic and len(req.messages) == 1:
+        semantic_cache().put(scope, question, text)
+    lap("store")
+    return done("claude", text, cost_usd(model, u), model, u.model_dump(),
+                (u.input_tokens, u.output_tokens, u.cache_creation_input_tokens or 0,
+                 u.cache_read_input_tokens or 0))
 
 
-def log(con, tenant, model, inp, out, cw, cr, cost, hit, ms):
+def log(con, tenant, model, inp, out, cw, cr, cost, hit, ms, layer):
     con.execute("INSERT INTO log (ts, run_id, tenant, model, input_tokens, output_tokens,"
-                " cache_write_tokens, cache_read_tokens, cost_usd, cache_hit, latency_ms)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                (time.time(), app.state.run_id, tenant, model, inp, out, cw, cr, cost, hit, ms))
+                " cache_write_tokens, cache_read_tokens, cost_usd, cache_hit, latency_ms, layer)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                (time.time(), app.state.run_id, tenant, model, inp, out, cw, cr, cost, hit, ms,
+                 layer))
     con.commit()
