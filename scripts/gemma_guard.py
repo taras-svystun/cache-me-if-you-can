@@ -8,11 +8,24 @@ Run: see README.md, section "S5 Gemma guard".
 """
 
 import json
+import re
 import time
 from pathlib import Path
 
 MODEL = "mlx-community/gemma-4-e4b-it-4bit"
 OUT = Path("results/guard_gemma.json")
+# Gemma 4 writes a thinking block (<|channel>thought ...) before its answer. With 30 tokens the
+# answer never arrived and every row parsed as "clean". Give it room, then read only the verdict.
+MAX_TOKENS = 400
+
+
+def verdict(answer: str) -> bool:
+    """True if the final answer says YES. The final answer is the text after the last channel
+    marker (end of thinking); without a marker, the last line. Thinking may say YES or NO too."""
+    final = re.split(r"<\|?channel\|?>", answer)[-1]
+    lines = [l for l in final.strip().splitlines() if l.strip()]
+    last = lines[-1] if lines else ""
+    return bool(re.match(r"\W*YES\b", last.strip().upper()))
 
 # Made-up examples. expected = True when the text holds personal data.
 EXAMPLES = [
@@ -26,6 +39,11 @@ EXAMPLES = [
     ("Translate 'the meeting moved to Thursday' into French.", False),
     ("Emmanuel Macron gave a speech on AI today; summarise the main points.", False),
     ("My colleague Paul lives at 12 rue des Lilas, Grenoble; write him a birthday card.", True),
+    # Added after the regex was written, to test what it was not tuned on.
+    ("Jean Martin from accounting has HIV; write him a sick-leave note.", True),
+    ("Email jean dot martin at gmail dot com about the refund.", True),
+    ("Her number is +33 6 12 34 56 78.", True),
+    ("Order 06 12 34 56 78 shipped on 01/02/2026.", False),
 ]
 
 PROMPT = (
@@ -64,11 +82,11 @@ def main() -> None:
         )
         print("gemma:  ", end="", flush=True)
         t, answer = time.time(), ""
-        for chunk in stream_generate(model, tok, prompt=prompt, max_tokens=30):
+        for chunk in stream_generate(model, tok, prompt=prompt, max_tokens=MAX_TOKENS):
             print(chunk.text, end="", flush=True)
             answer += chunk.text
         secs = time.time() - t
-        got = answer.strip().upper().startswith("YES")
+        got = verdict(answer)
         ok = got == expected
         correct += ok
         print(f"\nresult: {'OK  ' if ok else 'MISS'} ({secs:.2f}s)")

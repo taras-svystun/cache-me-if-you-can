@@ -121,3 +121,18 @@ Newest at the bottom.
   model actually fails. Quality judged by Claude on 2 tasks; Taras has not judged yet (stated limit).
 - Sonnet task 1 cost $0.0047 vs ~$0.0008 for the next simple ones: it paid the cache write of the
   policy prefix. Caches are per model, so routing between two models writes two caches.
+
+## 2026-11-24 · S5 local guard, regex side (thin slice)
+- `gateway/guard.py`: regex for email, French phone, IBAN, dd/mm/yyyy date, street address.
+  `scripts/s5_regex_guard.py` reads the rows from `scripts/gemma_guard.py`.
+- 10/10 on the original 10 rows, about 10 microseconds each. Not a fair score: Claude wrote the
+  patterns after seeing the rows. Its "health data" catch on row 7 came from the birth date, not
+  the word "diabetes".
+- 4 rows added after the regex was written: 0/4. Missed: health data with no date ("has HIV"),
+  spelled-out email ("jean dot martin at gmail dot com"), +33 phone format. False alarm: an order
+  number shaped like a phone and a shipping date. Total 10/14.
+- Taras's guesses: names are hard for regex (right: no pattern finds "Marie Dupont"; row 2 was
+  caught by the phone only). False alarm from @-like text (right in kind: shape without meaning).
+- Gemma fix, not yet run: `MAX_TOKENS` 30 -> 400, and `verdict()` reads only the last line after
+  the last channel marker, so YES/NO inside the thinking does not count. Checked offline on 4 made-up
+  strings; the real run needs Taras's terminal (GPU).
