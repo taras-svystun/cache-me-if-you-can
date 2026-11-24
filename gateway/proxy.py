@@ -67,6 +67,20 @@ def cost_usd(model: str, usage) -> float:
     return sum(tokens[k] * p[k] for k in tokens) / 1e6
 
 
+CHARS_PER_TOKEN = 2  # measured 2.39 on the policy; 4 (the usual rule) would undercount by 40%
+
+
+def worst_cost(model, system, messages, max_tokens, cache_control) -> float:
+    """Upper bound on one call's cost, known before the call: every input token at the dearest
+    input price (a cache write if caching is on), plus max_tokens of output (thinking included).
+    The input count is a local estimate, so a text denser than 2 chars per token can still
+    slip past it."""
+    p = PRICES[model]
+    chars = len(system or "") + sum(len(m["content"]) for m in messages)
+    in_price = max(p["input"], p["write_5m"]) if cache_control else p["input"]
+    return (chars / CHARS_PER_TOKEN * in_price + max_tokens * p["output"]) / 1e6
+
+
 def db() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(exist_ok=True)
     con = sqlite3.connect(DB_PATH)
@@ -76,6 +90,7 @@ def db() -> sqlite3.Connection:
         input_tokens INT, output_tokens INT, cache_write_tokens INT, cache_read_tokens INT,
         cost_usd REAL, cache_hit INT, latency_ms REAL, layer TEXT);
     CREATE TABLE IF NOT EXISTS exact_cache (key TEXT PRIMARY KEY, response TEXT);
+    CREATE TABLE IF NOT EXISTS reservations (id INTEGER PRIMARY KEY, usd REAL);
     """)
     return con
 
@@ -104,6 +119,7 @@ class Req(BaseModel):
 
 app = FastAPI()
 app.state.cap_usd = float(os.environ.get("SPEND_CAP_USD", "2.50"))
+app.state.reserve = True  # False: the old check (logged spend only), kept to measure the overshoot
 app.state.run_id = "dev"
 _client = None
 _semantic = None
@@ -176,16 +192,29 @@ def messages(req: Req, x_tenant: str = Header(...)):
         if hit is not None:
             return done("semantic", hit)
 
-    # 4. Spend cap. After the caches: a hit costs nothing, so it is served even over the cap.
-    spent = con.execute("SELECT COALESCE(SUM(cost_usd), 0) FROM log").fetchone()[0]
-    if spent >= app.state.cap_usd:
-        raise HTTPException(402, f"spend cap reached: ${spent:.4f} >= ${app.state.cap_usd:.2f}")
-
-    # 5. Router: only requests that will really call a model get routed.
+    # 4. Router: only requests that will really call a model get routed. Before the cap,
+    # because the worst-case cost depends on the model.
     model = req.model
     if model == "auto":
         model = route_rules(question)
         lap("router")
+
+    # 5. Spend cap. After the caches: a hit costs nothing, so it is served even over the cap.
+    # Reserve the worst case before the call, so requests in flight count too. BEGIN IMMEDIATE
+    # takes SQLite's write lock: two requests (or two proxies on this disk) cannot both read
+    # the same total and both pass.
+    worst = worst_cost(model, req.system, req.messages, req.max_tokens, req.cache_control)
+    con.execute("BEGIN IMMEDIATE")
+    spent = con.execute("SELECT (SELECT COALESCE(SUM(cost_usd), 0) FROM log)"
+                        " + (SELECT COALESCE(SUM(usd), 0) FROM reservations)").fetchone()[0]
+    need = worst if app.state.reserve else 0.0
+    if spent + need >= app.state.cap_usd:
+        con.rollback()
+        raise HTTPException(402, f"spend cap: ${spent:.6f} spent or reserved + ${need:.6f} "
+                                 f"> ${app.state.cap_usd:.6f}")
+    rid = con.execute("INSERT INTO reservations (usd) VALUES (?)", (need,)).lastrowid
+    con.commit()
+    lap("cap")
 
     # 6. Claude.
     kwargs = dict(model=model, max_tokens=req.max_tokens, messages=req.messages,
@@ -198,7 +227,15 @@ def messages(req: Req, x_tenant: str = Header(...)):
                              "cache_control": {"type": "ephemeral"}}]
     elif req.system:
         kwargs["system"] = req.system
-    r = client().messages.create(**kwargs)
+    try:
+        r = client().messages.create(**kwargs)
+    except Exception:
+        con.execute("DELETE FROM reservations WHERE id=?", (rid,))
+        con.commit()
+        raise
+    # Settle: drop the reservation now, done() writes the real cost; one commit for both, so the
+    # request is never counted twice or not at all.
+    con.execute("DELETE FROM reservations WHERE id=?", (rid,))
     lap("claude")
 
     text = "".join(b.text for b in r.content if b.type == "text")

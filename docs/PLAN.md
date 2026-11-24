@@ -35,7 +35,7 @@ of every step (S1 30 min, S3 20, S2 25, S4 20, S5 15), then go deeper in the tim
   Check: what each catches, seconds each adds.
 - ✅ Pipeline: all layers in one proxy, against a naive gateway (`scripts/s6_pipeline.py`).
 - ✅ Tidy: check every file for extra text, cut and merge.
-- [ ] Spend cap with reserve: block the worst-case cost before the call, settle after (15 min).
+- ✅ Spend cap with reserve: block the worst-case cost before the call, settle after (15 min).
 - [ ] Taras explains each mechanism, Claude plays the interviewer (3 min each).
 - [ ] Gemma speed: stop the thinking (prefill an empty thought block), re-run in Taras's terminal.
 

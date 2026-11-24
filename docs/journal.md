@@ -189,3 +189,23 @@ Newest at the bottom.
   itself; `smoke.py` uses `client()` with the sys.path line. Cert bundle is now `certifi.where()`
   (newer than pip's copy). Checked with the three env vars unset: smoke lists both models and
   Haiku replies; s2 runs offline at 8.6 ms per embed. README commands have no env prefix now.
+
+## 2026-11-24 · Spend cap with reservation
+- `gateway/proxy.py`: before the call, `worst_cost()` = estimated input tokens at the dearest input
+  price (cache write if caching is on) + `max_tokens` of output. Inside `BEGIN IMMEDIATE`: pass only
+  if logged + reserved + this worst < cap, then insert a row in `reservations`. After the call the
+  reservation is deleted in the same commit that logs the real cost; on an API error it is deleted too.
+  Router moved before the cap: the worst case depends on the model.
+- Token estimate: the policy has 2.39 chars per token (numbers, markdown), so the usual "4 chars per
+  token" would undercount by 40% and break the upper bound. Using 2. Still an estimate: a denser
+  text can slip past; the exact fix is the token-counting endpoint, one extra call.
+- `scripts/spend_cap.py`, fake Claude (0.5 s, $0.003), temp DB, 0 API calls: 10 parallel Sonnet
+  requests, cap room for 3. Old check: 10/10 passed, spent 286% of the cap. Reservation: 3 passed,
+  7 got 402, spent 86%.
+- Reserve vs real on the 16 pipeline Haiku calls: $0.000275 vs $0.0000516 = 5.3x (estimate 1961
+  input tokens vs 1594 real, priced as a cache write; real calls mostly read the cache).
+- Taras's guesses: 100x (actual 5.3x: input is known before the call, only output and cache state
+  are unknown, and output is capped at 60 tokens). Shared state in SQLite so every proxy sees it:
+  right for proxies on one disk; across machines SQLite does not work, it needs a shared store
+  (Postgres row lock, Redis atomic increment). The part the guess missed: the check and the
+  reserve must be one atomic step, else two requests read the same total and both pass.

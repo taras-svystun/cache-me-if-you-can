@@ -50,6 +50,11 @@ cd ~/Documents/Projects/cache-me-if-you-can && .venv/bin/python scripts/s5_regex
 cd ~/Documents/Projects/cache-me-if-you-can && .venv/bin/python scripts/s6_pipeline.py
 ```
 
+### Spend cap with reservation (no API calls, fake Claude)
+```
+cd ~/Documents/Projects/cache-me-if-you-can && .venv/bin/python scripts/spend_cap.py
+```
+
 ### S5 Gemma guard (run in your own terminal, not in Claude Code: it needs the GPU)
 ```
 cd ~/Documents/Projects/cache-me-if-you-can && .venv/bin/python scripts/gemma_guard.py
