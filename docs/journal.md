@@ -83,3 +83,24 @@ Newest at the bottom.
   across any requests. Timestamp at the start of system -> hit rate 0: right.
 - Side note for S2: with no document (call F) Haiku invented a display reset (10 s, power button);
   the policy says power + minus for 5 s. Exact or semantic cache would store and repeat that answer.
+
+## 2026-11-24 · S2 semantic cache (thin slice)
+- `gateway/semantic.py`: MiniLM (all-MiniLM-L6-v2, 384 numbers, CPU), nearest same-tenant entry by
+  cosine; optional ID guard: tokens with a digit (AB12, 2025) must match exactly, case included.
+  Not wired into the proxy yet; measured offline with `scripts/s2_semantic.py` (0 API calls).
+- Cache: 12 originals + "2025 return policy". Tests: 5 paraphrases, 8 traps.
+- Result (right hits of 5 / wrong hits): 0.95 off 2/4, on 2/1; 0.90 off 4/4, on 4/1;
+  0.85 off 4/6, on 3 wrong; 0.80 and below: 4 right, 7-8 wrong off, 4-5 on.
+  Best here: 0.90 with the guard, 4/5 right, 1 wrong.
+- The wrong hit no threshold can block: "cancel before it ships" vs "after it ships", sim 0.995,
+  higher than every true paraphrase (0.91-0.96). The embedder barely weighs before/after.
+  "Policy 2024 vs 2025" sim 0.981 and AB12/AB13 0.962: the guard blocks both.
+- One paraphrase ("How many days do I have to return...") lands nearest to the service question
+  (0.72), not to the return one: a low threshold would answer with the wrong topic.
+- Embedding adds 8 ms median per query on CPU. Taras guessed 100-500 ms.
+- Taras's guesses: threshold depends on domain and on the cost of a wrong hit vs a recompute; he
+  would go high: matches the data. Flat tyre vs cracked frame: he said <= 0.8, it was 0.64.
+  Block AB12/AB13 by exact match on ID-like tokens: that is the guard used here.
+- Code fix during the step: first version counted a hit as right when the label said "same answer"
+  without checking WHICH entry was nearest; the 0.70 row showed a false right hit. Labels now name
+  the expected cached question.
