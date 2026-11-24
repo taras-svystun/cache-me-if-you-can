@@ -120,10 +120,14 @@ def messages(req: Req, x_tenant: str = Header(...)):
 
     kwargs = dict(model=req.model, max_tokens=req.max_tokens, messages=req.messages,
                   thinking=THINKING[req.model])
-    if req.system:
+    if req.system and req.cache_control:
+        # Breakpoint on the system block: the shared document is the prefix to reuse.
+        # (A top-level marker would land on the last message, so the question would be in
+        # the cached prefix and the next, different question would miss.)
+        kwargs["system"] = [{"type": "text", "text": req.system,
+                             "cache_control": {"type": "ephemeral"}}]
+    elif req.system:
         kwargs["system"] = req.system
-    if req.cache_control:
-        kwargs["cache_control"] = {"type": "ephemeral"}
     r = client().messages.create(**kwargs)
 
     text = "".join(b.text for b in r.content if b.type == "text")

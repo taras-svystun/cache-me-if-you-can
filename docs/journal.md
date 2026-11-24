@@ -62,3 +62,24 @@ Newest at the bottom.
 - Guess review: wrong hits in an exact cache come from an input that changes the answer but is not
   in the key (date, updated document, sampling). Cap overshoot is at most one request's worst cost,
   times N with N requests in flight; the fix is to reserve the worst case before the call.
+
+## 2026-11-24 · S3 provider prompt caching (thin slice)
+- Research verdict: Haiku 5.5 $0.10 in / $0.50 out / $0.125 5-min write / $0.20 1-h write /
+  $0.01 read; Sonnet 5.5 $2 / $10 / $2.50 / $4 / $0.10. Minimum cacheable prefix 512 tokens for
+  both; default TTL 5 minutes. Source: platform.claude.com/docs/en/about-claude/pricing and
+  /build-with-claude/prompt-caching, read 2026-11-24 (no "last updated" date on either page).
+  Matches the `PRICES` table in `gateway/proxy.py`.
+- Breakpoint goes on the system block, not top-level: a top-level marker lands on the last message,
+  so each new question would be inside the cached prefix and miss.
+- `scripts/s3_prompt_cache.py`, made-up policy `data/policy.md` (1571 tokens) in system:
+  A writes 1571, B and C read 1571 with only 18-19 fresh input tokens. Input cost B $0.0000175 vs
+  D (no cache) $0.0001594: 9.1x cheaper per call, not 10x, because the question is full price.
+  Whole call (with output) only 4x cheaper: output is now the bigger cost.
+- Break-even: A+B $0.000216 vs D+D $0.000319, so caching already pays on the second call.
+- Latency: no visible change at 1.5k tokens (585-638 ms all). The time win needs long prefixes.
+- Short system (50 tokens): write 0, read 0, no error. Silent.
+- Taras's guesses: 9x right in size, but he subtracted the one-time write from every call; it is
+  paid once per 5 minutes. He thought caching is per conversation; it is stateless prefix matching
+  across any requests. Timestamp at the start of system -> hit rate 0: right.
+- Side note for S2: with no document (call F) Haiku invented a display reset (10 s, power button);
+  the policy says power + minus for 5 s. Exact or semantic cache would store and repeat that answer.

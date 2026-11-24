@@ -28,7 +28,7 @@ of every step (S1 30 min, S3 20, S2 25, S4 20, S5 15), then go deeper in the tim
   normalised messages (whitespace only, no lowercase: Taras's call, case can carry meaning, e.g.
   policy IDs). Check: repeat is a hit with 0 tokens and ~0 ms; tenants never share a hit;
   hit rate on the query set; SQL gives cost per model; 402 fires with a lowered cap.
-- [ ] S3 Provider prompt caching. First read Anthropic's docs for minimum cacheable length and
+- ✅ S3 Provider prompt caching. First read Anthropic's docs for minimum cacheable length and
   prices (cite page and date). Check: second call has `cache_read_input_tokens` > 0 and the cost
   drop matches the docs.
 - [ ] S2 Semantic cache, `sentence-transformers` on CPU. Check: hit rate and wrong hits at 3+
